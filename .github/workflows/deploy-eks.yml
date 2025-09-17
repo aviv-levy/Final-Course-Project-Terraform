@@ -8,7 +8,8 @@ on:
         required: true
         type: choice
         options:
-          - prod
+          - Apply
+          - Destroy
 
 env:
   AWS_REGION: "eu-west-1"
@@ -35,7 +36,7 @@ jobs:
       - name: Log Deployment Start
         run: |
           echo "======================================"
-          echo "Starting deployment to ${{ github.event.inputs.environment }} environment"
+          echo "Starting deployment to Prod environment"
           echo "Target Account: ${{ env.AWS_ACCOUNT_PROD }}"
           echo "Time: $(date)"
           echo "Triggered by: ${{ github.actor }}"
@@ -121,12 +122,17 @@ jobs:
           terraform validate
 
 
-      - name: Terraform Apply
+      - name: Terraform Apply OR Destroy
         working-directory: ./
         run: |
+          if [ "${{ github.event.inputs.environment }}" = "Apply" ]; then
           echo "Applying Terraform changes..."
           terraform apply -auto-approve
-          
+
+          elif [ "${{ github.event.inputs.environment }}" = "Destroy" ]; then
+          echo "Destroying Terraform..."
+          terraform destroy -auto-approve
+
       - name: Capture Outputs
         working-directory: ./
         run: |
@@ -143,18 +149,16 @@ jobs:
       - name: Log Deployment Complete
         run: |
           echo "======================================"
-          echo "Deployment to ${{ github.event.inputs.environment }} completed successfully!"
+          echo "Deployment to Prod completed successfully!"
           echo "Account: ${{ env.AWS_ACCOUNT_PROD }}"
           echo "Time: $(date)"
-          echo "AMI deployment and instance refresh initiated."
-          echo "Monitor progress in AWS Console or Splunk."
           echo "======================================"
 
       - name: Deployment Failure Notification
         if: failure()
         run: |
           echo "======================================"
-          echo "❌ DEPLOYMENT FAILED for ${{ github.event.inputs.environment }}"
+          echo "❌ DEPLOYMENT FAILED for Prod"
           echo "Check the logs above for error details"
           echo "Time: $(date)"
           echo "======================================"
