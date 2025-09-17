@@ -125,7 +125,7 @@ jobs:
         working-directory: ./
         run: |
           echo "Applying Terraform changes..."
-          terraform apply -auto-approve tfplan
+          terraform apply -auto-approve
           
       - name: Capture Outputs
         working-directory: ./
