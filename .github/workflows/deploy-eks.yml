@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       environment:
-        description: "Choose deployment environment"
+        description: "Choose Terraform Action"
         required: true
         type: choice
         options:
