@@ -1,0 +1,160 @@
+name: Deploy Terraform EKS
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Choose deployment environment"
+        required: true
+        type: choice
+        options:
+          - prod
+
+env:
+  AWS_REGION: "eu-west-1"
+#   SPLUNK_URL: ${{ secrets.SPLUNK_URL }}
+#   SPLUNK_TOKEN: ${{ secrets.SPLUNK_TOKEN }}
+#   SPLUNK_INDEX: ${{ secrets.SPLUNK_INDEX }}
+  AWS_ACCOUNT_PROD: "017923816312"
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  terraform:
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment }}
+    
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+        
+
+        
+      - name: Log Deployment Start
+        run: |
+          echo "======================================"
+          echo "Starting deployment to ${{ github.event.inputs.environment }} environment"
+          echo "Target Account: ${{ env.AWS_ACCOUNT_PROD }}"
+          echo "Time: $(date)"
+          echo "Triggered by: ${{ github.actor }}"
+          echo "======================================"
+
+      - name: Configure AWS Credentials - Main Account
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: ${{ env.AWS_REGION }}
+          role-to-assume: arn:aws:iam::${{ env.AWS_ACCOUNT_PROD }}:role/GithubActionsAvivLevyDeployRole
+          role-session-name: GitHubToMainAccount
+          
+      - name: Log AWS Main Account Connection
+        run: |
+          echo "Connected to main AWS account"
+          aws sts get-caller-identity
+
+    #   - name: Assume Role to Target Environment
+    #     uses: aws-actions/configure-aws-credentials@v4
+    #     with:
+    #       aws-region: ${{ env.AWS_REGION }}
+    #       role-to-assume: arn:aws:iam::${{ steps.env-vars.outputs.target_account }}:role/terraform-cross-account
+    #       role-session-name: GitHubToTargetEnv
+    #       role-chaining: true
+          
+    #   - name: Log Target Environment Connection
+    #     run: |
+    #       echo "Switched to ${{ github.event.inputs.environment }} account (${{ steps.env-vars.outputs.target_account }})"
+    #       aws sts get-caller-identity
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: 1.6.6
+          
+      - name: Ensure S3 Backend Bucket Exists
+        run: |
+          echo "Checking if S3 backend bucket exists..."
+          BUCKET_NAME="freestyle-terraform"
+          
+          # Check if bucket exists
+          if aws s3 ls "s3://$BUCKET_NAME" 2>/dev/null; then
+            echo "✅ Bucket $BUCKET_NAME exists"
+          else
+            echo "📦 Creating bucket $BUCKET_NAME..."
+            aws s3 mb "s3://$BUCKET_NAME" --region ${{ env.AWS_REGION }}
+            
+            echo "🔒 Enabling versioning..."
+            aws s3api put-bucket-versioning \
+              --bucket "$BUCKET_NAME" \
+              --versioning-configuration Status=Enabled
+            
+            echo "🔐 Enabling encryption..."
+            aws s3api put-bucket-encryption \
+              --bucket "$BUCKET_NAME" \
+              --server-side-encryption-configuration '{
+                "Rules": [{
+                  "ApplyServerSideEncryptionByDefault": {
+                    "SSEAlgorithm": "AES256"
+                  }
+                }]
+              }'
+            
+            echo "🚫 Blocking public access..."
+            aws s3api put-public-access-block \
+              --bucket "$BUCKET_NAME" \
+              --public-access-block-configuration \
+                BlockPublicAcls=true,IgnorePublicAcls=true,BlockPublicPolicy=true,RestrictPublicBuckets=true
+            
+            echo "✅ Bucket $BUCKET_NAME created and configured"
+          fi
+
+      - name: Terraform Init
+        working-directory: ./
+        run: |
+          echo "Initializing Terraform..."
+          terraform init
+          
+      - name: Terraform Validate
+        working-directory: ./
+        run: |
+          echo "Validating Terraform configuration..."
+          terraform validate
+
+
+      - name: Terraform Apply
+        working-directory: ./
+        run: |
+          echo "Applying Terraform changes..."
+          terraform apply -auto-approve tfplan
+          
+      - name: Capture Outputs
+        working-directory: ./
+        run: |
+          echo "======================================"
+          echo "Deployment Outputs:"
+          if terraform output -json > outputs.json 2>/dev/null; then
+            cat outputs.json | jq . || echo "JQ parsing failed, showing raw output:" && cat outputs.json
+          else
+            echo "Failed to capture terraform outputs, showing direct output:"
+            terraform output || echo "No outputs available"
+          fi
+          echo "======================================"
+          
+      - name: Log Deployment Complete
+        run: |
+          echo "======================================"
+          echo "Deployment to ${{ github.event.inputs.environment }} completed successfully!"
+          echo "Account: ${{ env.AWS_ACCOUNT_PROD }}"
+          echo "Time: $(date)"
+          echo "AMI deployment and instance refresh initiated."
+          echo "Monitor progress in AWS Console or Splunk."
+          echo "======================================"
+
+      - name: Deployment Failure Notification
+        if: failure()
+        run: |
+          echo "======================================"
+          echo "❌ DEPLOYMENT FAILED for ${{ github.event.inputs.environment }}"
+          echo "Check the logs above for error details"
+          echo "Time: $(date)"
+          echo "======================================"
