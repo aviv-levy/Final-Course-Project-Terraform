@@ -132,6 +132,7 @@ jobs:
           elif [ "${{ github.event.inputs.environment }}" = "Destroy" ]; then
           echo "Destroying Terraform..."
           terraform destroy -auto-approve
+          fi
 
       - name: Capture Outputs
         working-directory: ./
