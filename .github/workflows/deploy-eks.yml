@@ -13,9 +13,6 @@ on:
 
 env:
   AWS_REGION: "eu-west-1"
-#   SPLUNK_URL: ${{ secrets.SPLUNK_URL }}
-#   SPLUNK_TOKEN: ${{ secrets.SPLUNK_TOKEN }}
-#   SPLUNK_INDEX: ${{ secrets.SPLUNK_INDEX }}
   AWS_ACCOUNT_PROD: "017923816312"
 
 permissions:
@@ -53,19 +50,7 @@ jobs:
         run: |
           echo "Connected to main AWS account"
           aws sts get-caller-identity
-
-    #   - name: Assume Role to Target Environment
-    #     uses: aws-actions/configure-aws-credentials@v4
-    #     with:
-    #       aws-region: ${{ env.AWS_REGION }}
-    #       role-to-assume: arn:aws:iam::${{ steps.env-vars.outputs.target_account }}:role/terraform-cross-account
-    #       role-session-name: GitHubToTargetEnv
-    #       role-chaining: true
           
-    #   - name: Log Target Environment Connection
-    #     run: |
-    #       echo "Switched to ${{ github.event.inputs.environment }} account (${{ steps.env-vars.outputs.target_account }})"
-    #       aws sts get-caller-identity
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v2
