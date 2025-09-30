@@ -164,6 +164,14 @@ jobs:
           role-to-assume: arn:aws:iam::${{ env.AWS_ACCOUNT_PROD }}:role/GithubActionsAvivLevyDeployRole
           role-session-name: GitHubToMainAccount
 
+      - name: Setup kubectl & auth to EKS 🧩
+        env:
+          AWS_REGION: ${{ env.AWS_REGION }}
+          EKS_CLUSTER_NAME: ${{ env.EKS_CLUSTER_NAME }}
+        run: |
+            aws eks update-kubeconfig --name "$EKS_CLUSTER_NAME" --region "$AWS_REGION"
+            kubectl version --client=true
+
       - name: Setup Helm
         uses: azure/setup-helm@v4
         with:
