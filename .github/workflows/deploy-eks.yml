@@ -13,6 +13,7 @@ on:
 
 env:
   AWS_REGION: "eu-west-1"
+  EKS_CLUSTER_NAME: "Freestyle"
   AWS_ACCOUNT_PROD: "017923816312"
 
 permissions:
@@ -151,6 +152,7 @@ jobs:
 
 
   splunk:
+    needs: terraform
     runs-on: ubuntu-latest
     environment: ${{ github.event.inputs.environment }}
 
@@ -171,7 +173,7 @@ jobs:
         run: |
           helm repo add splunk-otel-collector-chart https://signalfx.github.io/splunk-otel-collector-chart
           helm repo update
-          helm install splunk-otel-collector --set="cloudProvider=aws,distribution=eks,splunkObservability.accessToken=ygoWTjK2uH78qQ7nFr6HqQ,clusterName=,splunkObservability.realm=eu0,gateway.enabled=false,splunkObservability.profilingEnabled=true,environment=prod,operatorcrds.install=true,operator.enabled=true,agent.discovery.enabled=true" splunk-otel-collector-chart/splunk-otel-collector
+          helm install splunk-otel-collector --set="cloudProvider=aws,distribution=eks,splunkObservability.accessToken=ygoWTjK2uH78qQ7nFr6HqQ,clusterName=${EKS_CLUSTER_NAME},splunkObservability.realm=eu0,gateway.enabled=false,splunkObservability.profilingEnabled=true,environment=prod,operatorcrds.install=true,operator.enabled=true,agent.discovery.enabled=true" splunk-otel-collector-chart/splunk-otel-collector
 
 
         
