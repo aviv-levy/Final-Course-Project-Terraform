@@ -162,14 +162,10 @@ jobs:
           role-to-assume: arn:aws:iam::${{ env.AWS_ACCOUNT_PROD }}:role/GithubActionsAvivLevyDeployRole
           role-session-name: GitHubToMainAccount
 
-      - name: Install helm to runner
-        run: |
-         sudo apt-get update
-         sudo apt-get install apt-transport-https --yes
-         curl https://baltocdn.com/helm/signing.asc | sudo apt-key add -
-         echo "deb https://baltocdn.com/helm/stable/debian/ all main" | sudo tee /etc/apt/sources.list.d/helm-stable-debian.list
-         sudo apt-get update
-         sudo apt-get install helm
+      - name: Setup Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: v3.14.4
 
       - name: Add and Install Splunk helm
         run: |
