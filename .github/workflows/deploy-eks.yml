@@ -162,3 +162,35 @@ jobs:
           echo "Check the logs above for error details"
           echo "Time: $(date)"
           echo "======================================"
+
+
+  splunk:
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment }}
+
+    steps:
+      - name: Configure AWS Credentials - Main Account
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: ${{ env.AWS_REGION }}
+          role-to-assume: arn:aws:iam::${{ env.AWS_ACCOUNT_PROD }}:role/GithubActionsAvivLevyDeployRole
+          role-session-name: GitHubToMainAccount
+
+      - name: Install helm to runner
+        run: |
+         sudo apt-get update
+         sudo apt-get install apt-transport-https --yes
+         curl https://baltocdn.com/helm/signing.asc | sudo apt-key add -
+         echo "deb https://baltocdn.com/helm/stable/debian/ all main" | sudo tee /etc/apt/sources.list.d/helm-stable-debian.list
+         sudo apt-get update
+         sudo apt-get install helm
+
+      - name: Add and Install Splunk helm
+        run: |
+          helm repo add splunk-otel-collector-chart https://signalfx.github.io/splunk-otel-collector-chart
+          helm repo update
+          helm install splunk-otel-collector --set="cloudProvider=aws,distribution=eks,splunkObservability.accessToken=ygoWTjK2uH78qQ7nFr6HqQ,clusterName=,splunkObservability.realm=eu0,gateway.enabled=false,splunkObservability.profilingEnabled=true,environment=prod,operatorcrds.install=true,operator.enabled=true,agent.discovery.enabled=true" splunk-otel-collector-chart/splunk-otel-collector
+
+
+        
+
